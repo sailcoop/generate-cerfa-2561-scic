@@ -131,12 +131,6 @@ class Beneficiaire(BaseModel):
     # AE - Commune de naissance
     ville_naissance: str = Field(..., description="Commune de naissance")
     
-    # AB - Code département de naissance
-    dept_naissance: str = Field(default="", description="Code département de naissance")
-    
-    # AQ - Code pays de naissance (si étranger)
-    pays_naissance: str = Field(default="FR", description="Code pays de naissance")
-    
     # ZJ - Code postal de résidence
     code_postal: str = Field(..., description="Code postal de résidence")
     
@@ -148,21 +142,6 @@ class Beneficiaire(BaseModel):
     
     # ZH - Nature et nom de la voie
     nom_voie: str = Field(default="", description="Nature et nom de la voie")
-    
-    # BO - Adresse complète (pour compatibilité)
-    adresse: str = Field(default="", description="Adresse complète")
-    
-    # AG - Complément d'adresse
-    complement_adresse: str = Field(default="", description="Complément d'adresse")
-    
-    # AI - Code pays de résidence (si étranger)
-    pays_residence: str = Field(default="FR", description="Code pays de résidence")
-    
-    # AH - Code qualité (1=titulaire, 2=conjoint, etc.)
-    code_qualite: str = Field(default="1", description="Code qualité du bénéficiaire")
-    
-    # BR - Option pour le barème progressif (O/N)
-    option_bareme: str = Field(default="", description="Option barème progressif (O/N)")
     
     # Code sexe (1=Masculin, 2=Féminin)
     code_sexe: str = Field(default="1", description="Code sexe (1=Masculin, 2=Féminin)")
