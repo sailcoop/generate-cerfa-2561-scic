@@ -1,0 +1,4 @@
+annee;raison_sociale;siret;nom;prenom;date_naissance;ville_naissance;code_postal;ville;email;id_template_brevo;2TR;2BH;2CK
+2025;SCIC WINDCOOP;91348171900015;DUPONT;JEAN;19880809;FREJUS;56100;LORIENT;jean.dupont@example.com;ifu_2025;20;20;3
+2025;SCIC WINDCOOP;91348171900015;MARTIN;MARIE;19750315;PARIS;75001;PARIS;marie.martin@example.com;ifu_2025;50;50;7
+2025;SCIC WINDCOOP;91348171900015;BERNARD;PIERRE;19901122;LYON;69000;LYON;pierre.bernard@example.com;ifu_2025;100;100;15
