@@ -59,13 +59,16 @@ def parse_csv(csv_path: Path) -> Generator[Beneficiaire, None, None]:
             
             # Colonnes optionnelles
             optional_columns = {
-                "dept_naissance",
-                "pays_naissance",
-                "adresse",
-                "complement_adresse",
-                "pays_residence",
-                "code_qualite",
-                "option_bareme",
+                "numero_voie",
+                "nom_voie",
+                "code_sexe",
+                "code_beneficiaire",
+                "periode_reference",
+                "code_etablissement",
+                "code_guichet",
+                "reference_compte",
+                "nature_compte",
+                "type_compte",
                 "id_template_brevo",
             }
 
