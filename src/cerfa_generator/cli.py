@@ -14,6 +14,7 @@ from . import __version__
 from .config import Config, setup_logging
 from .csv_parser import CSVParserError, count_rows, parse_csv
 from .email_sender import send_all_emails, validate_api_key
+from .models import Emetteur
 from .pdf_generator import PDFGeneratorError, generate_all_pdfs
 
 
@@ -21,13 +22,21 @@ from .pdf_generator import PDFGeneratorError, generate_all_pdfs
 @click.group()
 @click.version_option(version=__version__, prog_name="cerfa-generator")
 @click.option("--debug", is_flag=True, help="Active le mode debug")
+@click.option(
+    "--config",
+    "-c",
+    "config_file",
+    type=click.Path(exists=True, path_type=Path),
+    default="config/emetteur.yaml",
+    help="Fichier de configuration de l'émetteur (défaut: config/emetteur.yaml)",
+)
 @click.pass_context
-def main(ctx: click.Context, debug: bool):
+def main(ctx: click.Context, debug: bool, config_file: Path):
     """
     Générateur de CERFA 2561 pour les souscripteurs SCIC.
 
     Ce script permet de générer les formulaires CERFA 2561 pré-remplis
-    et de les envoyer par email aux souscripteurs via l'API Brevo.
+    et de les envoyer par email aux bénéficiaires via l'API Brevo.
     """
     # Initialiser la configuration
     config = Config.from_env()
@@ -36,10 +45,23 @@ def main(ctx: click.Context, debug: bool):
     # Configurer le logging
     logger = setup_logging(config.log_dir, config.debug)
 
+    # Charger la configuration de l'émetteur
+    emetteur = None
+    if config_file.exists():
+        try:
+            emetteur = Emetteur.from_yaml(config_file)
+            logger.info(f"Configuration émetteur chargée: {emetteur.raison_sociale}")
+        except Exception as e:
+            logger.error(f"Erreur chargement config émetteur: {e}")
+    else:
+        logger.warning(f"Fichier config non trouvé: {config_file}")
+
     # Stocker la config dans le contexte Click
     ctx.ensure_object(dict)
     ctx.obj["config"] = config
     ctx.obj["logger"] = logger
+    ctx.obj["emetteur"] = emetteur
+    ctx.obj["config_file"] = config_file
 
 
 @main.command()
@@ -68,15 +90,28 @@ def generate(
     """
     Génère les PDF CERFA 2561 à partir d'un fichier CSV.
 
-    CSV_FILE: Chemin vers le fichier CSV contenant les données des souscripteurs.
+    CSV_FILE: Chemin vers le fichier CSV contenant les données des bénéficiaires.
 
     Le fichier CSV doit contenir les colonnes suivantes:
-    annee, raison_sociale, siret, nom, prenom, date_naissance,
-    ville_naissance, code_postal, ville, email, id_template_brevo,
-    2TR, 2BH, 2CK
+    nom, prenom, date_naissance, ville_naissance, code_postal, ville,
+    email, 2TR, 2BH, 2CK
+
+    Colonnes optionnelles:
+    dept_naissance, pays_naissance, adresse, complement_adresse,
+    pays_residence, code_qualite, option_bareme, id_template_brevo
     """
     config: Config = ctx.obj["config"]
     logger = ctx.obj["logger"]
+    emetteur: Emetteur = ctx.obj["emetteur"]
+
+    # Vérifier que l'émetteur est configuré
+    if emetteur is None:
+        click.echo(
+            click.style("Erreur: Configuration émetteur non trouvée", fg="red"),
+            err=True,
+        )
+        click.echo(f"Créez le fichier {ctx.obj['config_file']} ou utilisez --config", err=True)
+        sys.exit(1)
 
     # Chemins par défaut
     template_path = template or config.template_path
@@ -94,6 +129,8 @@ def generate(
     # Créer le répertoire de sortie
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    click.echo(f"🏢 Émetteur: {emetteur.raison_sociale} (SIRET: {emetteur.siret})")
+    click.echo(f"📅 Année fiscale: {emetteur.annee}")
     click.echo(f"📄 Fichier CSV: {csv_file}")
     click.echo(f"📋 Template PDF: {template_path}")
     click.echo(f"📁 Répertoire de sortie: {output_dir}")
@@ -101,33 +138,33 @@ def generate(
     try:
         # Compter les lignes
         row_count = count_rows(csv_file)
-        click.echo(f"📊 Nombre de souscripteurs: {row_count}")
+        click.echo(f"📊 Nombre de bénéficiaires: {row_count}")
 
         # Parser le CSV
-        souscripteurs = list(parse_csv(csv_file))
-        click.echo(f"✅ CSV validé: {len(souscripteurs)} souscripteurs")
+        beneficiaires = list(parse_csv(csv_file))
+        click.echo(f"✅ CSV validé: {len(beneficiaires)} bénéficiaires")
 
         # Générer les PDFs
         with click.progressbar(
-            length=len(souscripteurs),
+            length=len(beneficiaires),
             label="Génération des PDF",
             show_eta=True,
         ) as bar:
             results = []
-            for souscripteur in souscripteurs:
-                output_path = output_dir / souscripteur.get_pdf_filename()
+            for beneficiaire in beneficiaires:
+                output_path = output_dir / beneficiaire.get_pdf_filename(emetteur.annee)
                 try:
                     from .pdf_generator import generate_pdf
 
-                    pdf_path = generate_pdf(souscripteur, template_path, output_path)
-                    results.append((souscripteur, pdf_path))
+                    pdf_path = generate_pdf(emetteur, beneficiaire, template_path, output_path)
+                    results.append((beneficiaire, pdf_path))
                 except PDFGeneratorError as e:
-                    logger.error(f"Échec: {souscripteur.nom_complet} - {e}")
+                    logger.error(f"Échec: {beneficiaire.nom_complet} - {e}")
                 bar.update(1)
 
         # Résumé
         click.echo()
-        click.echo(click.style(f"✅ {len(results)}/{len(souscripteurs)} PDF générés", fg="green"))
+        click.echo(click.style(f"✅ {len(results)}/{len(beneficiaires)} PDF générés", fg="green"))
         click.echo(f"📁 Les fichiers sont dans: {output_dir.absolute()}")
 
     except CSVParserError as e:
@@ -193,13 +230,29 @@ def send(
     """
     Envoie les PDF CERFA par email via l'API Brevo.
 
-    CSV_FILE: Fichier CSV contenant les données des souscripteurs.
+    CSV_FILE: Fichier CSV contenant les données des bénéficiaires.
     Les PDF correspondants doivent exister dans le répertoire PDF.
     """
     config: Config = ctx.obj["config"]
     logger = ctx.obj["logger"]
+    emetteur: Emetteur = ctx.obj["emetteur"]
+
+    # Vérifier que l'émetteur est configuré
+    if emetteur is None:
+        click.echo(
+            click.style("Erreur: Configuration émetteur non trouvée", fg="red"),
+            err=True,
+        )
+        click.echo(f"Créez le fichier {ctx.obj['config_file']} ou utilisez --config", err=True)
+        sys.exit(1)
 
     pdf_directory = pdf_dir or config.output_dir
+
+    # Utiliser les infos de l'émetteur si disponibles
+    if emetteur.brevo_sender_email:
+        sender_email = emetteur.brevo_sender_email
+    if emetteur.brevo_sender_name:
+        sender_name = emetteur.brevo_sender_name
 
     if dry_run:
         click.echo(click.style("🧪 MODE TEST - Les emails ne seront pas envoyés", fg="yellow"))
@@ -213,30 +266,30 @@ def send(
 
     try:
         # Parser le CSV
-        souscripteurs = list(parse_csv(csv_file))
-        click.echo(f"📊 {len(souscripteurs)} souscripteurs trouvés")
+        beneficiaires = list(parse_csv(csv_file))
+        click.echo(f"📊 {len(beneficiaires)} bénéficiaires trouvés")
 
         # Vérifier les PDF
-        souscripteurs_pdfs = []
+        beneficiaires_pdfs = []
         missing_pdfs = []
 
-        for s in souscripteurs:
-            pdf_path = pdf_directory / s.get_pdf_filename()
+        for b in beneficiaires:
+            pdf_path = pdf_directory / b.get_pdf_filename(emetteur.annee)
             if pdf_path.exists():
-                souscripteurs_pdfs.append((s, pdf_path))
+                beneficiaires_pdfs.append((b, pdf_path))
             else:
-                missing_pdfs.append(s)
+                missing_pdfs.append(b)
 
         if missing_pdfs:
             click.echo(
                 click.style(f"⚠️  {len(missing_pdfs)} PDF manquants:", fg="yellow")
             )
-            for s in missing_pdfs[:5]:
-                click.echo(f"   - {s.get_pdf_filename()}")
+            for b in missing_pdfs[:5]:
+                click.echo(f"   - {b.get_pdf_filename(emetteur.annee)}")
             if len(missing_pdfs) > 5:
                 click.echo(f"   ... et {len(missing_pdfs) - 5} autres")
 
-        if not souscripteurs_pdfs:
+        if not beneficiaires_pdfs:
             click.echo(
                 click.style("Erreur: Aucun PDF à envoyer", fg="red"),
                 err=True,
@@ -244,7 +297,7 @@ def send(
             click.echo("Générez d'abord les PDF avec la commande 'generate'")
             sys.exit(1)
 
-        click.echo(f"📧 {len(souscripteurs_pdfs)} emails à envoyer")
+        click.echo(f"📧 {len(beneficiaires_pdfs)} emails à envoyer")
         click.echo(f"📤 Expéditeur: {sender_name} <{sender_email}>")
 
         # Confirmation
@@ -255,20 +308,24 @@ def send(
 
         # Envoi
         with click.progressbar(
-            length=len(souscripteurs_pdfs),
+            length=len(beneficiaires_pdfs),
             label="Envoi des emails",
             show_eta=True,
         ) as bar:
             results = []
-            for souscripteur, pdf_path in souscripteurs_pdfs:
+            for beneficiaire, pdf_path in beneficiaires_pdfs:
                 from .email_sender import send_email
 
+                # Utiliser le template du bénéficiaire ou celui par défaut
+                template_id = beneficiaire.id_template_brevo or emetteur.brevo_template_default
+
                 result = send_email(
-                    souscripteur=souscripteur,
+                    beneficiaire=beneficiaire,
                     pdf_path=pdf_path,
                     api_key=api_key,
                     sender_email=sender_email,
                     sender_name=sender_name,
+                    template_id=template_id,
                     dry_run=dry_run,
                 )
                 results.append(result)
@@ -285,7 +342,7 @@ def send(
             click.echo(click.style(f"⚠️  {success} réussis, {failed} échecs", fg="yellow"))
             for r in results:
                 if not r.success:
-                    click.echo(f"   ❌ {r.souscripteur.email}: {r.message}")
+                    click.echo(f"   ❌ {r.beneficiaire.email}: {r.message}")
 
     except CSVParserError as e:
         click.echo(click.style(f"Erreur CSV: {e}", fg="red"), err=True)

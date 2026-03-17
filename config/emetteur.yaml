@@ -1,0 +1,78 @@
+# =============================================================================
+# Configuration de l'émetteur CERFA 2561
+# Informations de la SCIC qui émet les titres participatifs
+# =============================================================================
+
+# Année fiscale concernée
+annee: 2025
+
+# Section DÉSIGNATION DU PAYEUR (tiers déclarant)
+# Ces informations sont fixes pour toutes les déclarations
+
+# ZM - Raison sociale
+raison_sociale: "SCIC WINDCOOP"
+
+# ZN - Complément de nom / sigle
+complement_nom: ""
+
+# ZO - Numéro de la voie
+numero_voie: "12"
+
+# ZP - Nature et nom de la voie
+nom_voie: "rue de l'Énergie"
+
+# ZQ - Code postal
+code_postal: "56100"
+
+# ZR - Commune
+commune: "LORIENT"
+
+# CR - Code de la retenue à la source (si applicable)
+code_retenue: ""
+
+# ZS - Numéro SIRET (14 chiffres)
+siret: "91348171900015"
+
+# SIRET au 31/12/2025 (peut être différent si changement en cours d'année)
+siret_31_12: "91348171900015"
+
+# ZT - NIC (5 derniers chiffres du SIRET)
+nic: "00015"
+
+# ZX - Numéro de téléphone
+telephone: "0297000000"
+
+# ZZ - Téléphone correspondant
+tel_correspondant: "0297000001"
+
+# ZX - Nom du correspondant
+nom_correspondant: "DURAND"
+
+# ZW - Prénom correspondant
+prenom_correspondant: "Sophie"
+
+# ZY - Racine email correspondant (partie avant @)
+racine_email: "contact"
+
+# ZY - Domaine email correspondant (partie après @)
+domaine_email: "windcoop.fr"
+
+# ZW - Adresse email de contact
+email: "contact@windcoop.fr"
+
+# ZZ - Code pays (FR pour France)
+code_pays: "FR"
+
+# ZY - Référence déclarant (numéro interne)
+reference_declarant: ""
+
+# =============================================================================
+# Configuration Brevo pour l'envoi des emails
+# =============================================================================
+brevo:
+  # ID du template Brevo par défaut (peut être surchargé par bénéficiaire)
+  id_template_default: "ifu_2025"
+  
+  # Email et nom de l'expéditeur
+  sender_email: "contact@windcoop.fr"
+  sender_name: "SCIC WindCoop"

@@ -1,4 +1,4 @@
-annee;raison_sociale;siret;nom;prenom;date_naissance;ville_naissance;code_postal;ville;email;id_template_brevo;2TR;2BH;2CK
-2025;SCIC WINDCOOP;91348171900015;DUPONT;JEAN;19880809;FREJUS;56100;LORIENT;jean.dupont@example.com;ifu_2025;20;20;3
-2025;SCIC WINDCOOP;91348171900015;MARTIN;MARIE;19750315;PARIS;75001;PARIS;marie.martin@example.com;ifu_2025;50;50;7
-2025;SCIC WINDCOOP;91348171900015;BERNARD;PIERRE;19901122;LYON;69000;LYON;pierre.bernard@example.com;ifu_2025;100;100;15
+nom;prenom;date_naissance;ville_naissance;dept_naissance;pays_naissance;code_postal;ville;numero_voie;nom_voie;adresse;complement_adresse;pays_residence;code_qualite;option_bareme;code_sexe;code_beneficiaire;periode_reference;code_etablissement;code_guichet;reference_compte;nature_compte;type_compte;email;id_template_brevo;2TR;2BH;2CK
+DUPONT;JEAN;19880809;FREJUS;83;FR;56100;LORIENT;12;rue des Marins;;;FR;1;;1;001;2025;12345;67890;ABCDE12345;C;P;jean.dupont@example.com;;20;20;3
+MARTIN;MARIE;19750315;PARIS;75;FR;75001;PARIS;5;avenue des Champs;;;FR;1;;2;002;2025;12345;67890;FGHIJ67890;C;P;marie.martin@example.com;;50;50;7
+BERNARD;PIERRE;19901122;LYON;69;FR;69000;LYON;8;place Bellecour;;;FR;1;;1;003;2025;12345;67890;KLMNO12345;C;P;pierre.bernard@example.com;;100;100;15

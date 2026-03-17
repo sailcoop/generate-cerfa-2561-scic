@@ -1,7 +1,7 @@
 """
 Module d'envoi d'emails via l'API Brevo.
 
-Envoie les PDF CERFA générés aux souscripteurs via l'API transactionnelle Brevo.
+Envoie les PDF CERFA générés aux bénéficiaires via l'API transactionnelle Brevo.
 """
 
 import base64
@@ -11,7 +11,7 @@ from typing import Optional
 
 import requests
 
-from .models import EmailResult, Souscripteur
+from .models import EmailResult, Beneficiaire
 
 logger = logging.getLogger("cerfa_generator")
 
@@ -40,33 +40,35 @@ def encode_pdf_base64(pdf_path: Path) -> str:
 
 
 def send_email(
-    souscripteur: Souscripteur,
+    beneficiaire: Beneficiaire,
     pdf_path: Path,
     api_key: str,
     sender_email: str,
     sender_name: str,
+    template_id: str = "",
     dry_run: bool = False,
 ) -> EmailResult:
     """
     Envoie un email avec le PDF CERFA en pièce jointe via Brevo.
 
     Args:
-        souscripteur: Données du souscripteur
+        beneficiaire: Données du bénéficiaire
         pdf_path: Chemin vers le fichier PDF à envoyer
         api_key: Clé API Brevo
         sender_email: Email de l'expéditeur
         sender_name: Nom de l'expéditeur
+        template_id: ID du template Brevo (optionnel)
         dry_run: Si True, simule l'envoi sans réellement envoyer
 
     Returns:
         EmailResult avec le statut de l'envoi
     """
-    logger.info(f"Préparation email pour {souscripteur.nom_complet} ({souscripteur.email})")
+    logger.info(f"Préparation email pour {beneficiaire.nom_complet} ({beneficiaire.email})")
 
     if dry_run:
-        logger.info(f"[DRY RUN] Email simulé pour {souscripteur.email}")
+        logger.info(f"[DRY RUN] Email simulé pour {beneficiaire.email}")
         return EmailResult(
-            souscripteur=souscripteur,
+            beneficiaire=beneficiaire,
             success=True,
             message="Email simulé (dry run)",
             message_id="dry-run-no-id",
@@ -74,7 +76,7 @@ def send_email(
 
     if not pdf_path.exists():
         return EmailResult(
-            souscripteur=souscripteur,
+            beneficiaire=beneficiaire,
             success=False,
             message=f"Fichier PDF introuvable: {pdf_path}",
         )
@@ -83,6 +85,9 @@ def send_email(
     pdf_content = encode_pdf_base64(pdf_path)
     pdf_filename = pdf_path.name
 
+    # Extraire l'année du nom de fichier (CERFA_2561_XXXX_...)
+    annee = pdf_filename.split("_")[2] if len(pdf_filename.split("_")) > 2 else "2025"
+
     # Préparer la requête API Brevo
     headers = {
         "accept": "application/json",
@@ -90,7 +95,7 @@ def send_email(
         "content-type": "application/json",
     }
 
-    # Utiliser le template Brevo si spécifié
+    # Préparer le payload de base
     payload = {
         "sender": {
             "name": sender_name,
@@ -98,31 +103,30 @@ def send_email(
         },
         "to": [
             {
-                "email": souscripteur.email,
-                "name": souscripteur.nom_complet,
+                "email": beneficiaire.email,
+                "name": beneficiaire.nom_complet,
             }
         ],
-        "subject": f"Votre IFU CERFA 2561 - Année {souscripteur.annee}",
+        "subject": f"Votre IFU CERFA 2561 - Année {annee}",
         "htmlContent": f"""
         <html>
         <body>
-            <p>Bonjour {souscripteur.prenom} {souscripteur.nom},</p>
+            <p>Bonjour {beneficiaire.prenom} {beneficiaire.nom},</p>
             
             <p>Veuillez trouver ci-joint votre Imprimé Fiscal Unique (IFU) CERFA 2561 
-            pour l'année {souscripteur.annee}, relatif à vos titres participatifs 
-            dans la {souscripteur.raison_sociale}.</p>
+            pour l'année {annee}, relatif à vos titres participatifs.</p>
             
             <p>Ce document est à conserver pour votre déclaration de revenus.</p>
             
             <p><strong>Récapitulatif des montants :</strong></p>
             <ul>
-                <li>Case 2TR (Revenus de capitaux mobiliers) : {souscripteur.montant_2tr:.2f} €</li>
-                <li>Case 2BH (Revenus déjà soumis aux prélèvements sociaux) : {souscripteur.montant_2bh:.2f} €</li>
-                <li>Case 2CK (Crédit d'impôt) : {souscripteur.montant_2ck:.2f} €</li>
+                <li>Case 2TR (Revenus de capitaux mobiliers) : {beneficiaire.montant_2tr:.2f} €</li>
+                <li>Case 2BH (Revenus déjà soumis aux prélèvements sociaux) : {beneficiaire.montant_2bh:.2f} €</li>
+                <li>Case 2CK (Crédit d'impôt) : {beneficiaire.montant_2ck:.2f} €</li>
             </ul>
             
             <p>Cordialement,<br>
-            L'équipe {souscripteur.raison_sociale}</p>
+            {sender_name}</p>
         </body>
         </html>
         """,
@@ -132,17 +136,21 @@ def send_email(
                 "name": pdf_filename,
             }
         ],
-        "tags": ["cerfa-2561", f"annee-{souscripteur.annee}", souscripteur.id_template_brevo],
+        "tags": ["cerfa-2561", f"annee-{annee}"],
     }
+    
+    # Ajouter le template_id si spécifié
+    if template_id:
+        payload["tags"].append(template_id)
 
     try:
         response = requests.post(BREVO_API_URL, json=payload, headers=headers, timeout=30)
 
         if response.status_code == 201:
             message_id = response.json().get("messageId", "unknown")
-            logger.info(f"Email envoyé avec succès à {souscripteur.email} (ID: {message_id})")
+            logger.info(f"Email envoyé avec succès à {beneficiaire.email} (ID: {message_id})")
             return EmailResult(
-                souscripteur=souscripteur,
+                beneficiaire=beneficiaire,
                 success=True,
                 message="Email envoyé avec succès",
                 message_id=message_id,
@@ -151,7 +159,7 @@ def send_email(
             error_msg = f"Erreur API Brevo: {response.status_code} - {response.text}"
             logger.error(error_msg)
             return EmailResult(
-                souscripteur=souscripteur,
+                beneficiaire=beneficiaire,
                 success=False,
                 message=error_msg,
             )
@@ -160,49 +168,52 @@ def send_email(
         error_msg = f"Erreur de connexion: {e}"
         logger.error(error_msg)
         return EmailResult(
-            souscripteur=souscripteur,
+            beneficiaire=beneficiaire,
             success=False,
             message=error_msg,
         )
 
 
 def send_all_emails(
-    souscripteurs_pdfs: list[tuple[Souscripteur, Path]],
+    beneficiaires_pdfs: list[tuple[Beneficiaire, Path]],
     api_key: str,
     sender_email: str,
     sender_name: str,
+    template_id: str = "",
     dry_run: bool = False,
 ) -> list[EmailResult]:
     """
-    Envoie les emails à tous les souscripteurs.
+    Envoie les emails à tous les bénéficiaires.
 
     Args:
-        souscripteurs_pdfs: Liste de tuples (souscripteur, chemin_pdf)
+        beneficiaires_pdfs: Liste de tuples (beneficiaire, chemin_pdf)
         api_key: Clé API Brevo
         sender_email: Email de l'expéditeur
         sender_name: Nom de l'expéditeur
+        template_id: ID du template Brevo
         dry_run: Si True, simule l'envoi sans réellement envoyer
 
     Returns:
         Liste des résultats d'envoi
     """
     results = []
-    total = len(souscripteurs_pdfs)
+    total = len(beneficiaires_pdfs)
 
     if dry_run:
         logger.warning("MODE TEST ACTIVÉ - Les emails ne seront pas réellement envoyés")
 
     logger.info(f"Envoi de {total} emails...")
 
-    for i, (souscripteur, pdf_path) in enumerate(souscripteurs_pdfs, start=1):
-        logger.info(f"[{i}/{total}] Envoi à {souscripteur.email}")
+    for i, (beneficiaire, pdf_path) in enumerate(beneficiaires_pdfs, start=1):
+        logger.info(f"[{i}/{total}] Envoi à {beneficiaire.email}")
 
         result = send_email(
-            souscripteur=souscripteur,
+            beneficiaire=beneficiaire,
             pdf_path=pdf_path,
             api_key=api_key,
             sender_email=sender_email,
             sender_name=sender_name,
+            template_id=template_id,
             dry_run=dry_run,
         )
         results.append(result)

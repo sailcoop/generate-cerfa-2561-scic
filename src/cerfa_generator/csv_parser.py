@@ -1,7 +1,7 @@
 """
-Parseur CSV pour les données des souscripteurs.
+Parseur CSV pour les données des bénéficiaires.
 
-Lit et valide les fichiers CSV contenant les informations des souscripteurs.
+Lit et valide les fichiers CSV contenant les informations des bénéficiaires.
 """
 
 import csv
@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Generator
 
-from .models import Souscripteur
+from .models import Beneficiaire
 
 logger = logging.getLogger("cerfa_generator")
 
@@ -20,15 +20,15 @@ class CSVParserError(Exception):
     pass
 
 
-def parse_csv(csv_path: Path) -> Generator[Souscripteur, None, None]:
+def parse_csv(csv_path: Path) -> Generator[Beneficiaire, None, None]:
     """
-    Parse un fichier CSV et génère des objets Souscripteur.
+    Parse un fichier CSV et génère des objets Beneficiaire.
 
     Args:
         csv_path: Chemin vers le fichier CSV
 
     Yields:
-        Objets Souscripteur pour chaque ligne valide
+        Objets Beneficiaire pour chaque ligne valide
 
     Raises:
         CSVParserError: Si le fichier est invalide ou ne peut être lu
@@ -43,11 +43,8 @@ def parse_csv(csv_path: Path) -> Generator[Souscripteur, None, None]:
             # Utiliser le point-virgule comme délimiteur
             reader = csv.DictReader(f, delimiter=";")
 
-            # Vérifier les colonnes requises
+            # Colonnes requises (bénéficiaire uniquement)
             required_columns = {
-                "annee",
-                "raison_sociale",
-                "siret",
                 "nom",
                 "prenom",
                 "date_naissance",
@@ -55,10 +52,21 @@ def parse_csv(csv_path: Path) -> Generator[Souscripteur, None, None]:
                 "code_postal",
                 "ville",
                 "email",
-                "id_template_brevo",
                 "2TR",
                 "2BH",
                 "2CK",
+            }
+            
+            # Colonnes optionnelles
+            optional_columns = {
+                "dept_naissance",
+                "pays_naissance",
+                "adresse",
+                "complement_adresse",
+                "pays_residence",
+                "code_qualite",
+                "option_bareme",
+                "id_template_brevo",
             }
 
             if reader.fieldnames is None:
@@ -71,26 +79,28 @@ def parse_csv(csv_path: Path) -> Generator[Souscripteur, None, None]:
             # Parser chaque ligne
             for line_num, row in enumerate(reader, start=2):  # start=2 car ligne 1 = en-tête
                 try:
-                    souscripteur = Souscripteur(
-                        annee=int(row["annee"]),
-                        raison_sociale=row["raison_sociale"],
-                        siret=row["siret"],
-                        nom=row["nom"],
-                        prenom=row["prenom"],
-                        date_naissance=row["date_naissance"],
-                        ville_naissance=row["ville_naissance"],
-                        code_postal=row["code_postal"],
-                        ville=row["ville"],
-                        email=row["email"],
-                        id_template_brevo=row["id_template_brevo"],
-                        **{
-                            "2TR": float(row["2TR"]),
-                            "2BH": float(row["2BH"]),
-                            "2CK": float(row["2CK"]),
-                        },
-                    )
-                    logger.debug(f"Ligne {line_num}: {souscripteur.nom_complet}")
-                    yield souscripteur
+                    # Construire les données du bénéficiaire
+                    data = {
+                        "nom": row["nom"],
+                        "prenom": row["prenom"],
+                        "date_naissance": row["date_naissance"],
+                        "ville_naissance": row["ville_naissance"],
+                        "code_postal": row["code_postal"],
+                        "ville": row["ville"],
+                        "email": row["email"],
+                        "2TR": float(row["2TR"]),
+                        "2BH": float(row["2BH"]),
+                        "2CK": float(row["2CK"]),
+                    }
+                    
+                    # Ajouter les champs optionnels s'ils sont présents et non vides
+                    for col in optional_columns:
+                        if col in row and row[col]:
+                            data[col] = row[col]
+                    
+                    beneficiaire = Beneficiaire(**data)
+                    logger.debug(f"Ligne {line_num}: {beneficiaire.nom_complet}")
+                    yield beneficiaire
 
                 except Exception as e:
                     logger.error(f"Erreur ligne {line_num}: {e}")
