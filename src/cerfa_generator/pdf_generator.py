@@ -141,13 +141,13 @@ FIELD_BR_TYPE_COMPTE = (176, 217)
 # Coordonnées calibrées selon le template CERFA 2561
 # =============================================================================
 # Case 2TR (code AR) - Gains/Revenus de placements à revenu fixe
-FIELD_2TR = (176, 163)
+FIELD_2TR = (186, 163)
 
 # Case 2BH (code DQ) - Produits soumis à CSG déductible (option barème)
-FIELD_2BH = (84, 101)
+FIELD_2BH = (94, 101)
 
 # Case 2CK (code AJ) - Crédit d'impôt restituable
-FIELD_2CK = (176, 45)
+FIELD_2CK = (186, 45)
 
 # =============================================================================
 # SECTION CODE SEXE - Cases à cocher
