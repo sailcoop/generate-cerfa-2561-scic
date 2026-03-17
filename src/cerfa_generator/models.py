@@ -17,7 +17,7 @@ class Emetteur(BaseModel):
     Modèle représentant l'émetteur du CERFA (la SCIC).
     
     Ces informations sont fixes pour toutes les déclarations.
-    Codes CERFA: ZM, ZN, ZO, ZP, ZQ, ZR, CR, ZS, ZT, ZX, ZW, ZZ, ZY
+    Codes CERFA: ZM, ZO, ZP, ZQ, ZR, ZS, ZT, ZX, ZW, ZZ, ZY
     """
     
     # Année fiscale
@@ -26,38 +26,23 @@ class Emetteur(BaseModel):
     # ZM - Raison sociale
     raison_sociale: str = Field(..., description="Raison sociale de la SCIC")
     
-    # ZN - Complément de nom / sigle
-    complement_nom: str = Field(default="", description="Complément de nom ou sigle")
-    
     # ZO - Numéro de la voie
     numero_voie: str = Field(default="", description="Numéro de la voie")
     
     # ZP - Nature et nom de la voie
     nom_voie: str = Field(default="", description="Nature et nom de la voie")
     
-    # ZQ - Code postal
-    code_postal: str = Field(..., description="Code postal")
-    
-    # ZR - Commune
+    # ZQ - Commune
     commune: str = Field(..., description="Commune")
     
-    # CR - Code de la retenue
-    code_retenue: str = Field(default="", description="Code de la retenue à la source")
+    # ZR - Code postal
+    code_postal: str = Field(..., description="Code postal")
     
-    # ZS - SIRET (14 chiffres)
-    siret: str = Field(..., description="Numéro SIRET (14 chiffres)")
-    
-    # SIRET au 31/12 de l'année (peut être différent du SIRET N-1)
+    # ZS - SIRET au 31/12
     siret_31_12: str = Field(default="", description="SIRET au 31/12 de l'année")
     
-    # ZT - NIC (5 derniers chiffres du SIRET)
-    nic: str = Field(default="", description="NIC (5 derniers chiffres du SIRET)")
-    
-    # ZX - Téléphone
-    telephone: str = Field(default="", description="Numéro de téléphone")
-    
-    # ZZ - Téléphone correspondant
-    tel_correspondant: str = Field(default="", description="Téléphone du correspondant")
+    # ZT - SIRET année N-1
+    siret: str = Field(..., description="Numéro SIRET (14 chiffres)")
     
     # ZX - Nom du correspondant
     nom_correspondant: str = Field(default="", description="Nom du correspondant")
@@ -65,20 +50,14 @@ class Emetteur(BaseModel):
     # ZW - Prénom correspondant
     prenom_correspondant: str = Field(default="", description="Prénom du correspondant")
     
+    # ZZ - Téléphone correspondant
+    tel_correspondant: str = Field(default="", description="Téléphone du correspondant")
+    
     # ZY - Racine email correspondant (partie avant @)
     racine_email: str = Field(default="", description="Racine email correspondant")
     
     # ZY - Domaine email correspondant (partie après @)
     domaine_email: str = Field(default="", description="Domaine email correspondant")
-    
-    # ZW - Email
-    email: str = Field(default="", description="Adresse email de contact")
-    
-    # ZZ - Code pays
-    code_pays: str = Field(default="FR", description="Code pays (FR par défaut)")
-    
-    # ZY - Référence déclarant
-    reference_declarant: str = Field(default="", description="Référence interne du déclarant")
     
     # Configuration Brevo
     brevo_template_default: str = Field(default="", description="ID template Brevo par défaut")
@@ -104,11 +83,13 @@ class Emetteur(BaseModel):
     @property
     def adresse_complete(self) -> str:
         """Retourne l'adresse complète sur une ligne."""
-        parts = [self.adresse_ligne1]
-        if self.adresse_ligne2:
-            parts.append(self.adresse_ligne2)
+        parts = []
+        if self.numero_voie:
+            parts.append(self.numero_voie)
+        if self.nom_voie:
+            parts.append(self.nom_voie)
         parts.append(f"{self.code_postal} {self.commune}")
-        return ", ".join(parts)
+        return " ".join(parts)
 
 
 class Beneficiaire(BaseModel):
