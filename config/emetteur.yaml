@@ -30,27 +30,27 @@ siret_31_12: "91348171900015"
 siret: "91348171900015"
 
 # ZX - Nom du correspondant
-nom_correspondant: "DURAND"
+nom_correspondant: "FITECO RENNES"
 
 # ZW - Prénom correspondant
-prenom_correspondant: "Sophie"
+prenom_correspondant: "NEANT"
 
 # ZZ - Téléphone correspondant
-tel_correspondant: "0297000001"
+tel_correspondant: "0299234464"
 
 # ZY - Racine email correspondant (partie avant @)
-racine_email: "contact"
+racine_email: "rennes"
 
 # ZY - Domaine email correspondant (partie après @)
-domaine_email: "windcoop.fr"
+domaine_email: "fiteco.com"
 
 # =============================================================================
 # Configuration Brevo pour l'envoi des emails
 # =============================================================================
 brevo:
   # ID du template Brevo par défaut (peut être surchargé par bénéficiaire)
-  id_template_default: "ifu_2025"
+  id_template_default: "346"
   
   # Email et nom de l'expéditeur
-  sender_email: "contact@windcoop.fr"
-  sender_name: "SCIC WindCoop"
+  sender_email: "souscription@sailcoop.fr"
+  sender_name: "SCIC Sailcoop"
